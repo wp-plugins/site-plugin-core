@@ -141,8 +141,9 @@ if (!class_exists("SitePlugin")) {
 				$version['changelog'] = false;
 			}
 			
-			$version['downgrade'] = $this->get_path($id, 'downgrade');
-			$version['test'] = $this->get_path($id, 'test');
+			$version['before'] = $this->get_path($id, 'before_upgrade');
+			$version['after'] = $this->get_path($id, 'after_upgrade');
+			$version['test'] = $this->get_path($id, 'regression_tests');
 			
 			return $version;
 		}
@@ -187,20 +188,11 @@ if (!class_exists("SitePlugin")) {
 		}		
 		
 		/*
-		 * Return the version number of the next available upgrade
+		 * Return the version number of the next upgrade
 		 * @return int version of the next upgrade
 		 */
 		function next_upgrade() {
-			
-			if ( $this->is_upgrade_available() ) {
-				$versions = $this->available_upgrades();
-				$ids = array_keys($versions);
-				$next = end($ids);
-				return $next;
-			} else {
-				return false;
-			}
-			
+			return $this->get_current_version() + 1;
 		}
 		
 		/*
@@ -229,7 +221,7 @@ if (!class_exists("SitePlugin")) {
 		 * @param $id int id of the version to upgrade to
 		 * @return mixed bool or array
 		 */
-		function upgrade($id) {
+		function execute($id) {
 			
 			$next = $this->next_upgrade();
 			if ( $id != $next ) {
@@ -238,11 +230,12 @@ if (!class_exists("SitePlugin")) {
 			
 			$version = $this->get_version_info($id);	
 
-			# run the upgrade script
-			include($version['upgrade']);
-
-			# increase next version by 1
-			$this->bump_version();
+			switch($_GET['action']):
+			case 'before': include($version['before']); break;
+			case 'upgrade': include($version['upgrade']); break;
+			case 'after': include($version['after']); $this->bump_version(); break;
+			default: wp_die($_GET['action'] . ' is not a valid action.');
+			endswitch;
 			
 			return TRUE;
 		}
@@ -350,7 +343,7 @@ if (!class_exists("SitePlugin")) {
       					wp_die( __("$id is not a valid version upgrade") );						
 					}
 					
-					$this->upgrade($id);
+					$this->execute($id);
 				?>
 					<p><?php echo __('Execution complete!')?></p>
 				<?php endif; ?>
@@ -361,11 +354,15 @@ if (!class_exists("SitePlugin")) {
 						<tr>
 							<th class="version"><?php echo __('Version') ?></th>
 							<th class="changelog"><?php echo __('Changelog') ?></th>
+							<th class="before-upgrade"><?php echo __('Verify before upgrade') ?></th>
 							<th class="upgrade"><?php echo __('Upgrade') ?></th>
+							<th class="after-upgrade"><?php echo __('Test after upgrade') ?></th>
 						</tr>
 					</thead>
 					<tbody>
-						<?php foreach ($this->available_upgrades() as $id => $info): ?>
+						<?php foreach ($this->available_upgrades() as $id => $info): 
+							$next = $id === $this->next_upgrade();
+						?>
 							<tr>
 								<td class="version"><?php echo $id ?></td>
 								<td class="changelog"><?php 
@@ -379,17 +376,22 @@ if (!class_exists("SitePlugin")) {
 										echo __('Not specified.');
 									endif; ?>
 								</td>
-								<td class="upgrade"><?php 
-									if ( $id === $this->next_upgrade() ) :
-										if ( $info['upgrade' ] ) { ?>
-											<a href="<?php echo esc_url($_SERVER['REQUEST_URI']."&execute=$id") ?>"><?php echo __('Execute Upgrade') ?></a>
-								  <?php } else {
-											echo 'Unavailable';
-										}
-									else : 
-										echo __('Pending');
-									endif; ?>
+								
+								<?php if ( $next ) : ?>
+								<td class="before-upgrade">
+									<a href="<?php echo esc_url($_SERVER['REQUEST_URI']."&amp;execute=$id&amp;action=before") ?>"><?php echo __('Execute') ?></a>
 								</td>
+								<td class="upgrade">
+									<a href="<?php echo esc_url($_SERVER['REQUEST_URI']."&amp;execute=$id&amp;action=upgrade") ?>"><?php echo __('Execute') ?></a>
+								</td>
+								<td class="after-upgrade">
+									<a href="<?php echo esc_url($_SERVER['REQUEST_URI']."&amp;execute=$id&amp;action=after") ?>"><?php echo __('Execute') ?></a>
+								</td>
+								<?php else: ?>
+									<td class="unavailable" colspan="3">
+									<?php echo __('Pending'); ?>
+									</td>
+								<?php endif; ?>
 							</tr>
 						<?php endforeach; ?>
 					</tbody>
@@ -474,7 +476,7 @@ if ( is_admin() ) {
 							echo '<a href="' . wp_nonce_url('plugins.php?action=activate&amp;plugin=' . $plugin_file , 'activate-plugin_' . $plugin_file) . '" title="' . __('Activate this plugin') . '" class="edit">' . __('Activate') . '</a> this plugin.';
 						endif; ?>
 						</p>
-					<?php elseif ( isset($status) && !$status[0] ) : ?>
+					<?php elseif ( !isset($status) || ( isset($status) && !$status[0]) ) : ?>
 					<form action="<?php echo $_SERVER['REQUEST_URI']; ?>" method="post">
 						<label for="name"><?php echo __('Name') ?></label>
 						<input type="text" name="name" value="<?php echo $name ?>"/>
