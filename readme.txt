@@ -1,0 +1,33 @@
+=== Site Plugin Core ===
+Contributors: tarasm
+Donate link: http://pledgie.com/campaigns/10950
+Tags: development, scrum, iterative
+Requires at least: 3.0
+Tested up to: 3.0
+Stable tag: 0.2
+
+Site Plugin Core is a library that can be used to create site plugins for managing iterative development of a Wordpress site.
+
+== Description ==
+
+== Installation ==
+
+== Frequently Asked Questions ==
+
+== Screenshots ==
+
+1. This screen shot description corresponds to screenshot-1.(png|jpg|jpeg|gif). Note that the screenshot is taken from
+the directory of the stable readme.txt, so in this case, `/tags/4.3/screenshot-1.png` (or jpg, jpeg, gif)
+2. This is the second screen shot
+
+== Changelog ==
+
+= 0.2 =
+* Added ability to create Site Plugins from Admin interace
+* Added ability to add versions through admin interface
+
+= 0.1 =
+* Initial commit
+* Create site versions
+* Incrementally upgrade site by executing upgrade.php for a version
+* Execute test, upgrade
