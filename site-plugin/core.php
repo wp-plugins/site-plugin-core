@@ -81,9 +81,10 @@ if (!class_exists("SitePlugin")) {
 		
 		/*
 		 * Return array of all versions and their info
+		 * @param bool applied do you want applied versionly only? 
 		 * @return array of all versions and their info
 		 */
-		function get_versions() {
+		function get_versions($applied=false) {
 			
 			$versions = array();
 			$directory = $this->versions;
@@ -100,6 +101,9 @@ if (!class_exists("SitePlugin")) {
 				}
 			}
 			ksort($versions);
+			if ( $applied ) { 
+				$versions = array_slice($versions, 0, $this->get_current_version()); 
+			}
 			return $versions;
 			
 		}
@@ -201,7 +205,7 @@ if (!class_exists("SitePlugin")) {
 		 * @return int id of last version
 		 */
 		function last_version() {
-			$versions = $this->available_upgrades();
+			$versions = $this->get_versions();
 			$ids = array_keys($versions);
 			return (int)end($ids);
 		}
@@ -324,6 +328,18 @@ if (!class_exists("SitePlugin")) {
 			<div class="wrap">
 				<h2><?php echo __($this->name), __(' Upgrade Log') ?></h2>
 				<p><?php echo __('Current Version: '), $this->get_current_version(); ?></p>
+				<h3><?php echo __('Changelog') ?></h3>
+				<ol>
+					<?php foreach ($versions = $this->get_versions(true) as $id=>$version ): ?>
+						<li>
+							<ul>
+								<?php foreach ( explode("\n", $version['changelog']) as $item ) : ?>
+									<li><?php echo $item; ?></li>
+								<?php endforeach; ?>
+							</ul>
+						</li>
+					<?php endforeach; ?>
+				</ol>
 			</div>
 		<?php } 
 		
