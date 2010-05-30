@@ -4,7 +4,7 @@ Donate link: http://pledgie.com/campaigns/10950
 Tags: development, scrum, iterative
 Requires at least: 3.0
 Tested up to: 3.0
-Stable tag: 0.2.1
+Stable tag: 0.2.2
 
 Site Plugin Core is a library that can be used to create site plugins for managing iterative development of a Wordpress site.
 
