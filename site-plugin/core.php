@@ -2,7 +2,7 @@
 /*
 Plugin Name: Site Plugin Core
 Plugin URI: http://positivesum.org/wordpress/site-plugin-core
-Description: Library that can be used to create Site Plugins. Site plugins simplify the iterative development process.
+Description: Library that can be used to create Site Plugins. Site plugins simplify iterative development process.
 Version: 0.1
 Author: Taras Mankovski
 Author URI: http://taras.cc
@@ -15,14 +15,10 @@ if (!class_exists("SitePlugin")) {
 		function __construct($name) {
 	
 			$this->name = $name;
-			$this->slug = strtolower($name);
+			$this->slug = sanitize_title($name);
 			$this->option_name = $this->slug.'_version';
 			
-			// get plugin path
-			$path = explode('/', dirname(__FILE__));
-			
-			$position = array_search('plugins', $path);
-			$this->path = implode('/', array_slice($path, 0, $position+2));			
+			$this->path = WP_PLUGIN_DIR . '/' . $this->slug;			
 			
 			// contains path to versions
 			$this->versions = $this->path . '/versions/';
@@ -100,7 +96,7 @@ if (!class_exists("SitePlugin")) {
 			        }
         			closedir($dh);
 				} else {
-					_default_wp_die_handler('Versions directory does not exist in ' . $this->name . ' plugin directory');
+					wp_die('Versions directory does not exist in ' . $this->name . ' plugin directory');
 				}
 			}
 			ksort($versions);
@@ -191,19 +187,40 @@ if (!class_exists("SitePlugin")) {
 		}		
 		
 		/*
-		 * Return the version number of the next upgrade version
+		 * Return the version number of the next available upgrade
 		 * @return int version of the next upgrade
 		 */
-		function next_version() {
+		function next_upgrade() {
 			
 			if ( $this->is_upgrade_available() ) {
 				$versions = $this->available_upgrades();
 				$ids = array_keys($versions);
-				$next = array_shift($ids);
+				$next = end($ids);
 				return $next;
 			} else {
 				return false;
 			}
+			
+		}
+		
+		/*
+		 * Return id of the last version available
+		 * 
+		 * @return int id of last version
+		 */
+		function last_version() {
+			$versions = $this->available_upgrades();
+			$ids = array_keys($versions);
+			return (int)end($ids);
+		}
+		
+		/*
+		 * Return id of the next version
+		 * 
+		 * @return int id of the next version
+		 */
+		function next_version() {
+			return $this->last_version() + 1;
 			
 		}
 		
@@ -214,9 +231,9 @@ if (!class_exists("SitePlugin")) {
 		 */
 		function upgrade($id) {
 			
-			$next = $this->next_version();
+			$next = $this->next_upgrade();
 			if ( $id != $next ) {
-				return "Next upgrade is " . $this->next_version() . " not $id";
+				return "Next upgrade is " . $this->next_upgrade() . " not $id";
 			}
 			
 			$version = $this->get_version_info($id);	
@@ -240,14 +257,77 @@ if (!class_exists("SitePlugin")) {
 			if ( $this->is_upgrade_available() ) {
 				add_submenu_page($menu_slug, __('Available Upgrades'), __('Upgrade'), 'manage_options', $menu_slug.'_upgrade', array(&$this, 'upgrade_page') );				
 			}
+			add_submenu_page($menu_slug, __('Add Version'), __('Add Version'), 'manage_options', $menu_slug.'_add_version', array(&$this, 'add_version_page') );
+		}
 
+		/*
+		 * Creates next version in versions directory
+		 * 
+		 * @return int id of the created version
+		 */
+		function create_version() {
+			
+			$next = $this->next_version();
+			$previous = $this->last_version();
+			$version_dir = $this->versions . "$next/";
+			
+			if ( mkdir($version_dir) ) {
+				
+				$src = WP_PLUGIN_DIR . '/site-plugin/templates/';
+				copy($src.'before_upgrade.php', $version_dir.'before_upgrade.php');
+				copy($src.'after_upgrade.php', $version_dir.'after_upgrade.php');
+				copy($src.'regression_tests.php', $version_dir.'regression_tests.php');
+				copy($src.'upgrade.php', $version_dir.'upgrade.php');
+
+				$previous_path =  $this->slug.'/versions/'.$previous.'/version.php';
+				if ( $previous ) {
+					$include = 'include_once(WP_PLUGIN_DIR . "/'.$previous_path.'");';
+				}
+				
+				$template = $src.'/version.php';
+				$handle = fopen($template, "r");
+				$contents = fread($handle, filesize($template));
+				fclose($handle);
+
+				$contents = sprintf($contents, $include, $next, $previous, $next);
+				$plugin_file = fopen($version_dir.'version.php', 'w');
+				fwrite($plugin_file, $contents);
+				fclose($plugin_file);				
+			
+			} else {
+				wp_die(fsprint('Could not create version %s in %s', $next, $this->versions));
+			}
+			
+			return $next;
 		}
 		
-		function main_page() { 
+		/*
+		 * This page shows information about creating new version and link to do it.
+		 */
+		function add_version_page() { 
+			$this->verify_permissions(); 
+			?>
+			<div class="wrap">
+				<h2><?php echo __('Add New Version') ?></h2>
+				<?php if (array_key_exists('action', $_GET) && $_GET['action'] == 'create') : 
+					$version = $this->create_version(); ?>
+					<p><?php echo __(sprintf('Created version %s for site plugin: %s', $version, $this->name )) ?></p>
+				<?php else: ?>
+					<p><a href="<?php echo $_SERVER['REQUEST_URI']?>&amp;action=create"><?php echo __('Create') ?></a> <?php echo __('new version.')?></p>
+				<?php endif; ?>
+			</div>
+			
+		<?php }
+		
+		function verify_permissions() {
 			if ( !current_user_can('manage_options') ) {
       			wp_die( __('You do not have sufficient permissions to access this page.') );
-    		}
-    		?>
+    		}		
+		}
+		
+		function main_page() {
+			$this->verify_permissions(); 
+			?>
 			<div class="wrap">
 				<h2><?php echo __($this->name), __(' Upgrade Log') ?></h2>
 				<p><?php echo __('Current Version: '), $this->get_current_version(); ?></p>
@@ -255,11 +335,7 @@ if (!class_exists("SitePlugin")) {
 		<?php } 
 		
 		function upgrade_page() { 
-			
-			if ( !current_user_can('manage_options') ) {
-      			wp_die( __('You do not have sufficient permissions to access this page.') );
-    		}
-			
+			$this->verify_permissions();
 			?>
 			<div class="wrap">
 			
@@ -304,7 +380,7 @@ if (!class_exists("SitePlugin")) {
 									endif; ?>
 								</td>
 								<td class="upgrade"><?php 
-									if ( $id === $this->next_version() ) :
+									if ( $id === $this->next_upgrade() ) :
 										if ( $info['upgrade' ] ) { ?>
 											<a href="<?php echo esc_url($_SERVER['REQUEST_URI']."&execute=$id") ?>"><?php echo __('Execute Upgrade') ?></a>
 								  <?php } else {
@@ -319,7 +395,117 @@ if (!class_exists("SitePlugin")) {
 					</tbody>
 				</table>		
 			</div>
-		<?php }
-		}
+	<?php }
 	}
+}
+
+if ( is_admin() ) {
+
+	if ( !class_exists('SitePluginAdmin') ) {
+
+		class SitePluginAdmin {
+			
+			function init() {
+		
+				add_action('admin_menu', array($this, 'admin_menu'));
+		
+			}
+			
+			function admin_menu() {
+				# create management page in settings
+				add_options_page(__('Site Plugin Settings'), __('Site Plugin'), 'manage_options', 'site_plugin_settings', array($this, 'settings_page') );				
+			}
+
+			/*
+			 * Creates empty site plugin
+			 * @param name str name of plugin to create
+			 * @return array of results first value is result boolean, second value is message.
+			 */
+			function create_plugin($name) {
+				
+				$plugin = sanitize_title($name);
+				$path = WP_PLUGIN_DIR . '/' . $plugin;
+				$plugin_path = $path . '/plugin.php';
+				
+				if ( !file_exists($path) ) {
+					if ( mkdir($path) ) {
+						$template = dirname(__FILE__) . '/templates/plugin.php';
+						$handle = fopen($template, "r");
+						$contents = fread($handle, filesize($template));
+						fclose($handle);			
+						$contents = sprintf($contents, $name, $name);
+						$plugin_file = fopen($path.'/'.'plugin.php', 'w');
+						fwrite($plugin_file, $contents);
+						fclose($plugin_file);
+						mkdir( $path.'/versions' );
+					} else {
+						return (array(FALSE, __("Error occured: Could not create ").$path));
+					}
+				} else {
+					return array(FALSE, __("Plugin directory: ").$path.__(' already exists. Choose another name.'));
+				}
+				return array(TRUE, __('Plugin ').$name.__(' was successfully created.'), $plugin_path);
+				
+			}
+			
+			/*
+	 		 * Displays settings admin page
+	 		*/
+			function settings_page() {
+				
+				$name = '';
+				
+				if ( array_key_exists('name', $_POST ) ) {
+					$name = $_POST['name'];
+					$status = $this->create_plugin($name);
+				}
+				
+				?>
+				
+				<div class="wrap">
+					<h2><?php echo __('Site Plugin Settings'); ?></h2>
+					<h3><?php echo __('Create Site Plugin'); ?></h3>
+					<?php 
+					if ( isset($status) ) : ?>
+						<p class="msg">
+						<?php echo $status[1] ?>
+						<?php if ( $status[0] ) :
+							$plugin_file = $status[2];
+							echo '<a href="' . wp_nonce_url('plugins.php?action=activate&amp;plugin=' . $plugin_file , 'activate-plugin_' . $plugin_file) . '" title="' . __('Activate this plugin') . '" class="edit">' . __('Activate') . '</a> this plugin.';
+						endif; ?>
+						</p>
+					<?php elseif ( isset($status) && !$status[0] ) : ?>
+					<form action="<?php echo $_SERVER['REQUEST_URI']; ?>" method="post">
+						<label for="name"><?php echo __('Name') ?></label>
+						<input type="text" name="name" value="<?php echo $name ?>"/>
+						<input type="submit" value="<?php echo __('Submit'); ?>"/>
+					</form>
+					<?php endif; ?>
+				</div>
+				
+				<?php 
+			}			
+			
+		}		
+		
+	}
+	
+	$site_plugin_admin = new SitePluginAdmin;
+	add_action('init', array($site_plugin_admin, 'init'));	
+
+}
+
+if ( !class_exists('SiteVersion') ) {
+
+	/*
+	 * This is an abstract class for future site versions.
+	 */
+	class SiteVersion_0 {
+		
+		var $version = 0;
+		
+	}
+	
+}
+
 ?>
