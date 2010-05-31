@@ -270,7 +270,7 @@ if (!class_exists("SitePlugin")) {
 			
 			if ( mkdir($version_dir) ) {
 				
-				$src = WP_PLUGIN_DIR . '/site-plugin/templates/';
+				$src = WP_PLUGIN_DIR . '/site-plugin-core/templates/';
 				copy($src.'before_upgrade.php', $version_dir.'before_upgrade.php');
 				copy($src.'after_upgrade.php', $version_dir.'after_upgrade.php');
 				copy($src.'regression_tests.php', $version_dir.'regression_tests.php');
