@@ -3,7 +3,7 @@
 Plugin Name: Site Plugin Core
 Plugin URI: http://positivesum.org/wordpress/site-plugin-core
 Description: Library that can be used to create Site Plugins. Site plugins simplify iterative development process.
-Version: 0.2.5
+Version: 0.2.6
 Author: Taras Mankovski
 Author URI: http://taras.cc
 */
@@ -37,11 +37,13 @@ if (!class_exists("SitePlugin")) {
 			
 			# setup admin menu
 			if ( is_admin() ) {
-
+				
 				define('SITEPLUGIN', true);
 				
 				add_action('admin_menu', array(&$this, 'setup_menu'));			
 
+				require_once(WP_PLUGIN_DIR.'/site-plugin-core/helpers.php');			
+				
 			}
 
 		}	
@@ -232,8 +234,8 @@ if (!class_exists("SitePlugin")) {
 				return "Next upgrade is " . $this->next_upgrade() . " not $id";
 			}
 			
-			$version = $this->get_version_info($id);	
-
+			$version = $this->get_version_info($id);				
+			
 			switch($_GET['action']):
 			case 'before': include($version['before']); break;
 			case 'upgrade': include($version['upgrade']); break;
@@ -274,22 +276,29 @@ if (!class_exists("SitePlugin")) {
 				copy($src.'before_upgrade.php', $version_dir.'before_upgrade.php');
 				copy($src.'after_upgrade.php', $version_dir.'after_upgrade.php');
 				copy($src.'regression_tests.php', $version_dir.'regression_tests.php');
-				copy($src.'upgrade.php', $version_dir.'upgrade.php');
 
-				$previous_path =  $this->slug.'/versions/'.$previous.'/version.php';
-				if ( $previous ) {
-					$include = 'include_once(WP_PLUGIN_DIR . "/'.$previous_path.'");';
+				// generate upgrade file from templates
+				// setup default upgrade values
+				$upgrade = array( 'widgets'=>false, 'sidebars'=>false );
+				
+				if ( array_key_exists('include_widgets', $_POST) && $_POST['include_widgets'] == 'on' ) {
+					$upgrade['widgets'] = dump_widgets();
 				}
 				
-				$template = $src.'/version.php';
-				$handle = fopen($template, "r");
-				$contents = fread($handle, filesize($template));
-				fclose($handle);
+				if ( array_key_exists('include_sidebars', $_POST) && $_POST['include_sidebars'] == 'on' ) {
+					$upgrade['sidebars'] = dump_sidebars_widgets();
+				}
+				
+				file_from_template($src.'upgrade.php', $version_dir.'upgrade.php', $upgrade);
 
-				$contents = sprintf($contents, $include, $next, $previous, $next);
-				$plugin_file = fopen($version_dir.'version.php', 'w');
-				fwrite($plugin_file, $contents);
-				fclose($plugin_file);				
+				// generate version file from template
+				$version = array( 
+					'previous_path' => '/'.$this->slug.'/versions/'.$previous.'/version.php',
+					'previous' => $previous,
+					'next' => $next
+				);
+				
+				file_from_template($src.'version.php', $version_dir.'version.php', $version);
 			
 			} else {
 				wp_die(fsprint('Could not create version %s in %s', $next, $this->versions));
@@ -306,11 +315,25 @@ if (!class_exists("SitePlugin")) {
 			?>
 			<div class="wrap">
 				<h2><?php echo __('Add New Version') ?></h2>
-				<?php if (array_key_exists('action', $_GET) && $_GET['action'] == 'create') : 
+				
+				<?php if (array_key_exists('action', $_POST) && $_POST['action'] == 'create') : 
 					$version = $this->create_version(); ?>
 					<p><?php echo __(sprintf('Created version %s for site plugin: %s', $version, $this->name )) ?></p>
 				<?php else: ?>
-					<p><a href="<?php echo $_SERVER['REQUEST_URI']?>&amp;action=create"><?php echo __('Create') ?></a> <?php echo __('new version.')?></p>
+					<h3><?php echo __('Include') ?></h3>
+					<form action="<?php echo $_SERVER['REQUEST_URI']; ?>" method="post">
+	
+						<input type="checkbox" name="include_sidebars" />
+						<label for="include_sidebars"><?php echo __('Sidebars') ?></label>
+						<br/>
+	
+						<input type="checkbox" name="include_widgets" />
+						<label for="include_widgets"><?php echo __('Widgets') ?></label>
+						<br/>
+	
+						<input type="submit" value="<?php echo __('Submit'); ?>"/><br/>
+						<input type="hidden" name="action" value="create" />
+					</form>				
 				<?php endif; ?>
 			</div>
 			

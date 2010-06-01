@@ -16,7 +16,7 @@ if ( is_admin() ) {
 	}
 	
 	# initialize plugin
-	new SitePlugin('%s');
+	new SitePlugin('{{values.name}}');
 	
 }
 

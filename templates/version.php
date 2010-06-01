@@ -6,10 +6,12 @@
  * from version to version.
  */
 
-%s
+{% if previous !=  0 %}
+include_once(WP_PLUGIN_DIR . "{{ previous_path }}");
+{% endif %}
 
-class SiteVersion_%s extends SiteVersion_%s {
-	var $version = %d;	
+class SiteVersion_{{ next }} extends SiteVersion_{{ previous }} {
+	var $version = {{ next }};	
 }
 
 ?>
