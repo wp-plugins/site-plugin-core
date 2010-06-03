@@ -5,6 +5,7 @@ if ( !class_exists('Spyc') ) require_once(WP_PLUGIN_DIR.'/site-plugin-core/lib/s
 
 // include h2o - template parcing library
 if ( !class_exists('H2o') ) require_once(WP_PLUGIN_DIR.'/site-plugin-core/lib/h2o.php');
+require_once(WP_PLUGIN_DIR.'/site-plugin-core/lib/h2o_filters.php');
 
 if ( !function_exists('dump_sidebars_widgets') ) {
 
@@ -45,6 +46,29 @@ if ( !function_exists('dump_widgets') ) {
 	
 }
 
+if ( !function_exists('dump_options') ) {
+
+	/*
+	 * Return options serialized as YAML string
+	 * @param array of names of options to dump
+	 * @return str in yaml format
+	 */
+	function dump_options($options) {
+
+		$storage = array();
+		foreach ( $options as $option ) {
+
+			$value = get_option($option);
+			$storage[$option] = is_serialized($value) ? unserialize($value) : $value;
+			
+		}
+		
+		return Spyc::YAMLDump($storage);
+		
+	}
+	
+}
+
 if ( !function_exists('update_sidebars_widgets') ) {
 	
 	/*
@@ -69,9 +93,37 @@ if ( !function_exists('update_widgets_options') ) {
 		
 		$widgets = Spyc::YAMLLoad($yaml);
 		
-		foreach ( $widgets as $widget => $data ) {
+		if ( $widgets ) {
+
+			foreach ( $widgets as $widget => $data ) {
 			
-			update_option($widget, $data);
+				update_option($widget, $data);
+			
+			}			
+			
+		}
+		
+	}
+	
+}
+
+if ( !function_exists('update_options') ) {
+	
+	/*
+	 * Update options from yaml string
+	 * @param str yaml encoded associated array
+	 */
+	function update_options($yaml) {
+		
+		$options = Spyc::YAMLLoad($yaml);
+		
+		if ( $options ) {
+			
+			foreach ( $options as $option => $data ) {
+				
+				update_option($option, $data);
+				
+			}
 			
 		}
 		

@@ -3,7 +3,7 @@
 Plugin Name: Site Plugin Core
 Plugin URI: http://positivesum.org/wordpress/site-plugin-core
 Description: Library that can be used to create Site Plugins. Site plugins simplify iterative development process.
-Version: 0.2.6
+Version: 0.2.5
 Author: Taras Mankovski
 Author URI: http://taras.cc
 */
@@ -279,7 +279,7 @@ if (!class_exists("SitePlugin")) {
 
 				// generate upgrade file from templates
 				// setup default upgrade values
-				$upgrade = array( 'widgets'=>false, 'sidebars'=>false );
+				$upgrade = array( 'widgets'=>false, 'sidebars'=>false, 'options'=>false );
 				
 				if ( array_key_exists('include_widgets', $_POST) && $_POST['include_widgets'] == 'on' ) {
 					$upgrade['widgets'] = dump_widgets();
@@ -287,6 +287,10 @@ if (!class_exists("SitePlugin")) {
 				
 				if ( array_key_exists('include_sidebars', $_POST) && $_POST['include_sidebars'] == 'on' ) {
 					$upgrade['sidebars'] = dump_sidebars_widgets();
+				}
+				
+				if ( array_key_exists('other_options', $_POST) && $_POST['other_options'] ) {
+					$upgrade['options'] = dump_options(explode("\n", $_POST['other_options']));
 				}
 				
 				file_from_template($src.'upgrade.php', $version_dir.'upgrade.php', $upgrade);
@@ -312,32 +316,22 @@ if (!class_exists("SitePlugin")) {
 		 */
 		function add_version_page() { 
 			$this->verify_permissions(); 
-			?>
-			<div class="wrap">
-				<h2><?php echo __('Add New Version') ?></h2>
-				
-				<?php if (array_key_exists('action', $_POST) && $_POST['action'] == 'create') : 
-					$version = $this->create_version(); ?>
-					<p><?php echo __(sprintf('Created version %s for site plugin: %s', $version, $this->name )) ?></p>
-				<?php else: ?>
-					<h3><?php echo __('Include') ?></h3>
-					<form action="<?php echo $_SERVER['REQUEST_URI']; ?>" method="post">
-	
-						<input type="checkbox" name="include_sidebars" />
-						<label for="include_sidebars"><?php echo __('Sidebars') ?></label>
-						<br/>
-	
-						<input type="checkbox" name="include_widgets" />
-						<label for="include_widgets"><?php echo __('Widgets') ?></label>
-						<br/>
-	
-						<input type="submit" value="<?php echo __('Submit'); ?>"/><br/>
-						<input type="hidden" name="action" value="create" />
-					</form>				
-				<?php endif; ?>
-			</div>
+
+			if ( $created = array_key_exists('action', $_POST) && $_POST['action'] == 'create' ) {
+				$version = $this->create_version();
+			} else {
+				$version = NULL;
+			}
 			
-		<?php }
+			$values = array(
+				'created'=>$created, 
+				'version'=>$version,
+				'url'=>$_SERVER['REQUEST_URI']
+			);
+			
+			$h2o = new h2o(WP_PLUGIN_DIR.'/site-plugin-core/views/add_version.html');
+			echo $h2o->render($values);
+		}
 		
 		function verify_permissions() {
 			if ( !current_user_can('manage_options') ) {
