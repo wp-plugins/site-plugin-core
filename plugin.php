@@ -3,7 +3,7 @@
 Plugin Name: Site Plugin Core
 Plugin URI: http://positivesum.org/wordpress/site-plugin-core
 Description: Library that can be used to create Site Plugins. Site plugins simplify iterative development process.
-Version: 0.2.5
+Version: 0.2.6
 Author: Taras Mankovski
 Author URI: http://taras.cc
 */
