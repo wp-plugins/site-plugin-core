@@ -14,6 +14,17 @@ if ( class_exists('h2o') ) {
 			return __($text);
 		}
 		
+		/*
+		 * Get single error message. This will get the first message available for the code. 
+		 * If no code is given then the first code available will be used. Returns an error string.
+		 * @param $code string
+		 * @param $messages instance of WP_Error class
+		 * @return string or null
+		 */
+		function message($code='', $messages) {
+			return $messages->get_error_message($code);
+		}
+		
 	}
 	
 }

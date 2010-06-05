@@ -1,6 +1,6 @@
 <?php 
 /*
-Plugin Name: %s
+Plugin Name: {{ name }}
 Plugin URI: http://positivesum.org/wordpress/site-plugin-core
 Description: Site Plugin
 Version: 0.1
