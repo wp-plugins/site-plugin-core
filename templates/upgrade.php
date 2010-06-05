@@ -28,6 +28,14 @@ EOT;
 update_sidebars_widgets($sidebars);
 {% endif %}
 
+{% if options %}
+// yaml string of sidebars_widgets options
+$options = <<<EOT
+{{ options }}
+EOT;
+/* updated sidebar widgets */
+update_options($options);
+{% endif %}
 /* sample comment */
 
 ?>

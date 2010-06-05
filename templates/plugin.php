@@ -1,6 +1,6 @@
 <?php 
 /*
-Plugin Name: %s
+Plugin Name: {{ name }}
 Plugin URI: http://positivesum.org/wordpress/site-plugin-core
 Description: Site Plugin
 Version: 0.1
@@ -16,7 +16,7 @@ if ( is_admin() ) {
 	}
 	
 	# initialize plugin
-	new SitePlugin('{{values.name}}');
+	new SitePlugin('{{ name }}');
 	
 }
 

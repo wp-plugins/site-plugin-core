@@ -2,7 +2,7 @@
 Contributors: tarasm
 Donate link: http://pledgie.com/campaigns/10950
 Tags: development, scrum, iterative
-Requires at least: 3.0
+Requires at least: 2.9
 Tested up to: 3.0
 Stable Tag: 0.2.6
 
@@ -23,10 +23,8 @@ the directory of the stable readme.txt, so in this case, `/tags/4.3/screenshot-1
 == Changelog ==
 
 = 0.2.6 =
-* Added ability to generate versions with sidebars_widgets and widgets options
-* Added yaml parsing libary
-* Added h2o - template library
-* Migrated templates to h2o
+* Fixed plugin.php template
+* Added error reporting to templating
 
 = 0.2.5 =
 * Renamed core.php to plugin.php
