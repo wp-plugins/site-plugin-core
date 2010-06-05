@@ -2,9 +2,9 @@
 Contributors: tarasm
 Donate link: http://pledgie.com/campaigns/10950
 Tags: development, scrum, iterative
-Requires at least: 3.0
+Requires at least: 2.9
 Tested up to: 3.0
-Stable Tag: 0.2.5
+Stable Tag: 0.2.6
 
 Site Plugin Core is a library that can be used to create site plugins for managing iterative development of a Wordpress site.
 
@@ -21,6 +21,10 @@ the directory of the stable readme.txt, so in this case, `/tags/4.3/screenshot-1
 2. This is the second screen shot
 
 == Changelog ==
+
+= 0.2.6 =
+* Fixed plugin.php template
+* Added error reporting to templating
 
 = 0.2.5 =
 * Renamed core.php to plugin.php
