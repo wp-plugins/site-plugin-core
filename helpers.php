@@ -1,12 +1,5 @@
 <?php 
 
-// include spyc - yaml parsing library - http://code.google.com/p/spyc/
-if ( !class_exists('Spyc') ) require_once(WP_PLUGIN_DIR.'/site-plugin-core/lib/spyc.php');
-
-// include h2o - template parcing library
-if ( !class_exists('H2o') ) require_once(WP_PLUGIN_DIR.'/site-plugin-core/lib/h2o.php');
-require_once(WP_PLUGIN_DIR.'/site-plugin-core/lib/h2o_filters.php');
-
 if ( !function_exists('dump_sidebars_widgets') ) {
 
 	/*

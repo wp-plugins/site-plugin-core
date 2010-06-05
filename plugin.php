@@ -8,6 +8,11 @@ Author: Taras Mankovski
 Author URI: http://taras.cc
 */
 
+require_once(dirname(__FILE__).'/lib.php');
+
+# display Site Plugin Admin interface
+if ( is_admin() ) include_once(dirname(__FILE__).'/admin.php');
+
 if (!class_exists("SitePlugin")) {
 	
 	class SitePlugin {
@@ -20,6 +25,9 @@ if (!class_exists("SitePlugin")) {
 			
 			$this->path = WP_PLUGIN_DIR . '/' . $this->slug;			
 			
+			$this->h2o = new H2o(NULL, array('context', $this));
+			$this->errors = new WP_Error;
+
 			// contains path to versions
 			$this->versions = $this->path . '/versions/';
 			
@@ -434,103 +442,7 @@ if (!class_exists("SitePlugin")) {
 	}
 }
 
-if ( is_admin() ) {
-
-	if ( !class_exists('SitePluginAdmin') ) {
-
-		class SitePluginAdmin {
-			
-			function init() {
-		
-				add_action('admin_menu', array($this, 'admin_menu'));
-		
-			}
-			
-			function admin_menu() {
-				# create management page in settings
-				add_options_page(__('Site Plugin Settings'), __('Site Plugin'), 'manage_options', 'site_plugin_settings', array($this, 'settings_page') );				
-			}
-
-			/*
-			 * Creates empty site plugin
-			 * @param name str name of plugin to create
-			 * @return array of results first value is result boolean, second value is message.
-			 */
-			function create_plugin($name) {
-				
-				$plugin = sanitize_title($name);
-				$path = WP_PLUGIN_DIR . '/' . $plugin;
-				$plugin_path = $path . '/plugin.php';
-				
-				if ( !file_exists($path) ) {
-					if ( mkdir($path) ) {
-						$template = dirname(__FILE__) . '/templates/plugin.php';
-						$handle = fopen($template, "r");
-						$contents = fread($handle, filesize($template));
-						fclose($handle);			
-						$contents = sprintf($contents, $name, $name);
-						$plugin_file = fopen($path.'/'.'plugin.php', 'w');
-						fwrite($plugin_file, $contents);
-						fclose($plugin_file);
-						mkdir( $path.'/versions' );
-					} else {
-						return (array(FALSE, __("Error occured: Could not create ").$path));
-					}
-				} else {
-					return array(FALSE, __("Plugin directory: ").$path.__(' already exists. Choose another name.'));
-				}
-				return array(TRUE, __('Plugin ').$name.__(' was successfully created.'), $plugin_path);
-				
-			}
-			
-			/*
-	 		 * Displays settings admin page
-	 		*/
-			function settings_page() {
-				
-				$name = '';
-				
-				if ( array_key_exists('name', $_POST ) ) {
-					$name = $_POST['name'];
-					$status = $this->create_plugin($name);
-				}
-				
-				?>
-				
-				<div class="wrap">
-					<h2><?php echo __('Site Plugin Settings'); ?></h2>
-					<h3><?php echo __('Create Site Plugin'); ?></h3>
-					<?php 
-					if ( isset($status) ) : ?>
-						<p class="msg">
-						<?php echo $status[1] ?>
-						<?php if ( $status[0] ) :
-							$plugin_file = $status[2];
-							echo '<a href="' . wp_nonce_url('plugins.php?action=activate&amp;plugin=' . $plugin_file , 'activate-plugin_' . $plugin_file) . '" title="' . __('Activate this plugin') . '" class="edit">' . __('Activate') . '</a> this plugin.';
-						endif; ?>
-						</p>
-					<?php elseif ( !isset($status) || ( isset($status) && !$status[0]) ) : ?>
-					<form action="<?php echo $_SERVER['REQUEST_URI']; ?>" method="post">
-						<label for="name"><?php echo __('Name') ?></label>
-						<input type="text" name="name" value="<?php echo $name ?>"/>
-						<input type="submit" value="<?php echo __('Submit'); ?>"/>
-					</form>
-					<?php endif; ?>
-				</div>
-				
-				<?php 
-			}			
-			
-		}		
-		
-	}
-	
-	$site_plugin_admin = new SitePluginAdmin;
-	add_action('init', array($site_plugin_admin, 'init'));	
-
-}
-
-if ( !class_exists('SiteVersion') ) {
+if ( !class_exists('SiteVersion_0') ) {
 
 	/*
 	 * This is an abstract class for future site versions.
