@@ -8,7 +8,7 @@ Author: Taras Mankovski
 Author URI: http://taras.cc
 */
 
-require_once(dirname(__FILE__).'/lib.php');
+include_once(dirname(__FILE__).'/lib.php');
 
 # display Site Plugin Admin interface
 if ( is_admin() ) include_once(dirname(__FILE__).'/admin.php');
@@ -53,6 +53,8 @@ if (!class_exists("SitePlugin")) {
 				require_once(WP_PLUGIN_DIR.'/site-plugin-core/helpers.php');			
 				
 			}
+			
+			do_action('site_plugin_init');
 
 		}	
 		

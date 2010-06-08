@@ -1,0 +1,3 @@
+$upgrade->verify('widget_option_exists', '{{ option }}') && $upgrade->execute('widget_option_update', '{{ option }}', <<<EOT
+{{ value }}
+EOT);

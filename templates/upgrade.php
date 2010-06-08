@@ -10,32 +10,3 @@
  */
 defined('SITEPLUGIN') or wp_die('This script can only be executed from inside wp-admin');
 
-{% if widgets %}
-// yaml string of widgets options
-$widgets = <<<EOT
-{{ widgets }}
-EOT;
-/* updated widgets options */
-update_widgets_options($widgets);
-{% endif %}
-
-{% if sidebars %}
-// yaml string of sidebars_widgets options
-$sidebars = <<<EOT
-{{ sidebars }}
-EOT;
-/* updated sidebar widgets */
-update_sidebars_widgets($sidebars);
-{% endif %}
-
-{% if options %}
-// yaml string of sidebars_widgets options
-$options = <<<EOT
-{{ options }}
-EOT;
-/* updated sidebar widgets */
-update_options($options);
-{% endif %}
-/* sample comment */
-
-?>
