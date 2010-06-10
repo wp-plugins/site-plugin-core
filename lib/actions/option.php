@@ -44,36 +44,25 @@ if ( !class_exists('SiteUpgradeOptionActions') ) {
 			$elements[__('Options')] = $this->h2o->render(array('options'=>$this->options(), 'selected'=>$selected));
 			return $elements;
 		}
-		
-		
-		/*
-		 * Extract information from $_POST and prepare an array in the following format
-		 * array('option'=>$option, 'value'=>$value)
-		 * @return array
-		 */
-		function process() {
-			
-			$result = array();
-			if ( array_key_exists($_POST, 'options') && $_POST['options'] ) $options = $_POST['options'];
-			
-			foreach ( $options as $option ) { 
-				$result[] = array('option'=>$option, 'value'=>Spyc::YAMLDump(get_option($option, '')));
-			}
-			
-			return $result;
-			
-		}
-		
+				
 		/*
 		 * This method is called when upgrade script for an action is being generated.
 		 * @param $args necessary for function's operation
 		 * @return str of php code to add to upgrade script
 		 */
-		function generate( $options ) {
-			$code = '';
+		function generate($code) {
+
+			$result = array();
+			if ( !( array_key_exists('options', $_POST) && $_POST['options'] ) ) return '';
+			
+			$options = $_POST['options'];
+			
+			foreach ( $options as $option ) { 
+				$result[] = array('option'=>$option, 'value'=>Spyc::YAMLDump(get_option($option, '')));
+			}
 
 			$this->h2o->loadTemplate('options.code');
-			foreach ( $options as $option ) {
+			foreach ( $result as $option ) {
 				$code .= $this->h2o->render($option);
 			}
 			

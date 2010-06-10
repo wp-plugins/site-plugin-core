@@ -14,5 +14,5 @@ include_once(dirname(__FILE__).'/upgrade-action.php');
 include_once(dirname(__FILE__).'/lib/actions/option.php');
 include_once(dirname(__FILE__).'/lib/actions/category.php');
 include_once(dirname(__FILE__).'/lib/actions/post.php');
-include_once(dirname(__FILE__).'/lib/actions/widget.php');
+include_once(dirname(__FILE__).'/lib/actions/theme.php');
 ?>

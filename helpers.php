@@ -124,27 +124,4 @@ if ( !function_exists('update_options') ) {
 	
 }
 
-if ( !function_exists('file_from_template') ) {
-	
-	/*
-	 * Create a file from template
-	 * @param str path to the template
-	 * @param str path to the output
-	 * @param array with template substitutes
-	 * @return bool if file was created successfully
-	 */
-	 function file_from_template($template, $destination, $values) {
-	 	
-	 	if ( !file_exists($template) || !file_exists(dirname($destination)) ) return false;
-	 	
-	 	$contents = new h2o($template);
-	 	$output_file = fopen($destination, 'w');
-		fwrite($output_file, $output = $contents->render($values));
-		
-		return fclose($output_file);
-	 	
-	 }
-	 
-}
-
 ?>

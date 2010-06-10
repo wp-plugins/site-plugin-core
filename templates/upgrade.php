@@ -10,3 +10,4 @@
  */
 defined('SITEPLUGIN') or wp_die('This script can only be executed from inside wp-admin');
 
+{{ upgrades | safe }}

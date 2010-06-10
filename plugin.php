@@ -48,9 +48,7 @@ if (!class_exists("SitePlugin")) {
 				
 				define('SITEPLUGIN', true);
 				
-				add_action('admin_menu', array(&$this, 'setup_menu'));			
-
-				require_once(WP_PLUGIN_DIR.'/site-plugin-core/helpers.php');			
+				add_action('admin_menu', array(&$this, 'setup_menu'));
 				
 			}
 			
@@ -121,28 +119,6 @@ if (!class_exists("SitePlugin")) {
 		}
 		
 		/*
-		 * Return string of comments from php files
-		 * @param $file str path to file
-		 * @return str of comments
-		 */
-		function parse_comments($file) {
-			$text = file_get_contents($file);
-			$matches = array();
-			$pattern = '/\*.*?\*/smU';
-			preg_match($pattern, $text, $matches);
-			$comments = array();
-			// TODO: improve comment parsing
-			$lines = explode("\n", $text);
-			foreach ( $lines as $line ) {
-				if ( preg_match('/\*.*?\*/s', $line, $matches) ) {
-					$comment = str_replace('*', '', $matches[0]);
-					array_push($comments, $comment);					
-				}
-			}
-			return implode("\n", $comments);
-		}
-		
-		/*
 		 * Return array of information about a specific version
 		 * @param $id int id of a version to load
 		 * @return array of information about a specific version
@@ -151,16 +127,9 @@ if (!class_exists("SitePlugin")) {
 			
 			$version = array();
 			
-			if ( $version['upgrade'] = $this->get_path($id, 'upgrade') ) {
-				$version['changelog'] = $this->parse_comments($version['upgrade']);
-			} else {
-				$version['changelog'] = false;
-			}
-			
-			$version['before'] = $this->get_path($id, 'before_upgrade');
-			$version['after'] = $this->get_path($id, 'after_upgrade');
-			$version['test'] = $this->get_path($id, 'regression_tests');
-			
+			$version['upgrade'] = $this->get_path($id, 'upgrade');
+			$version['version'] = $this->get_path($id, 'version');
+				
 			return $version;
 		}
 
@@ -198,7 +167,7 @@ if (!class_exists("SitePlugin")) {
 			if ( in_array($current, $ids) ) {
 				return array_slice($versions, array_search($current, $ids)+1, sizeof($ids), TRUE);
 			} else {
-				wp_die("Something went wrong: $current version is not available, therefore upgrade could not be determined.");
+				$this->errors->add('error', "Something went wrong: $current version is not available, therefore upgrade could not be determined.");
 			}
 			
 		}		
@@ -261,12 +230,12 @@ if (!class_exists("SitePlugin")) {
 		 */
 		function setup_menu(){
 			
-			$menu_slug =  $this->slug.'_plugin';
+			$menu_slug =  $this->slug.'-plugin';
 			add_menu_page(__($this->name), __($this->name), 'manage_options', $menu_slug, array(&$this, 'main_page'));
 			if ( $this->is_upgrade_available() ) {
-				add_submenu_page($menu_slug, __('Available Upgrades'), __('Upgrade'), 'manage_options', $menu_slug.'_upgrade', array(&$this, 'upgrade_page') );				
+				add_submenu_page($menu_slug, __('Available Upgrades'), __('Upgrade'), 'manage_options', $menu_slug.'-upgrade', array(&$this, 'upgrade_page') );				
 			}
-			add_submenu_page($menu_slug, __('Add Version'), __('Add Version'), 'manage_options', $menu_slug.'_add_version', array(&$this, 'add_version_page') );
+			add_submenu_page($menu_slug, __('Create Upgrade'), __('Create Upgrade'), 'manage_options', $menu_slug.'-create-upgrade', array(&$this, 'create_upgrade_page') );
 		}
 
 		/*
@@ -280,43 +249,17 @@ if (!class_exists("SitePlugin")) {
 			$previous = $this->last_version();
 			$version_dir = $this->versions . "$next/";
 			
-			if ( mkdir($version_dir) ) {
-				
-				$src = WP_PLUGIN_DIR . '/site-plugin-core/templates/';
-				copy($src.'before_upgrade.php', $version_dir.'before_upgrade.php');
-				copy($src.'after_upgrade.php', $version_dir.'after_upgrade.php');
-				copy($src.'regression_tests.php', $version_dir.'regression_tests.php');
+			if ( !mkdir($version_dir) ) return $this->errors->add('error', fsprint('Could not create version %s in %s', $next, $this->versions));
 
-				// generate upgrade file from templates
-				// setup default upgrade values
-				$upgrade = array( 'widgets'=>false, 'sidebars'=>false, 'options'=>false );
-				
-				if ( array_key_exists('include_widgets', $_POST) && $_POST['include_widgets'] == 'on' ) {
-					$upgrade['widgets'] = dump_widgets();
-				}
-				
-				if ( array_key_exists('include_sidebars', $_POST) && $_POST['include_sidebars'] == 'on' ) {
-					$upgrade['sidebars'] = dump_sidebars_widgets();
-				}
-				
-				if ( array_key_exists('other_options', $_POST) && $_POST['other_options'] ) {
-					$upgrade['options'] = dump_options(explode("\n", $_POST['other_options']));
-				}
-				
-				file_from_template($src.'upgrade.php', $version_dir.'upgrade.php', $upgrade);
-
-				// generate version file from template
-				$version = array( 
-					'previous_path' => '/'.$this->slug.'/versions/'.$previous.'/version.php',
-					'previous' => $previous,
-					'next' => $next
-				);
-				
-				file_from_template($src.'version.php', $version_dir.'version.php', $version);
+			$this->h2o->loadTemplate(WP_PLUGIN_DIR . '/site-plugin-core/templates/upgrade.php');
 			
-			} else {
-				wp_die(fsprint('Could not create version %s in %s', $next, $this->versions));
-			}
+			$upgrades = apply_filters('site_upgrade_generate', '');
+			
+			$code = $this->h2o->render(array('upgrades'=>$upgrades));
+			
+			$output_file = fopen($version_dir.'upgrade.php', 'w');
+			fwrite($output_file, $code);
+			fclose($output_file);
 			
 			return $next;
 		}
@@ -324,7 +267,7 @@ if (!class_exists("SitePlugin")) {
 		/*
 		 * This page shows information about creating new version and link to do it.
 		 */
-		function add_version_page() { 
+		function create_upgrade_page() { 
 			$this->verify_permissions(); 
 
 			if ( $created = array_key_exists('action', $_POST) && $_POST['action'] == 'create' ) {
@@ -333,13 +276,16 @@ if (!class_exists("SitePlugin")) {
 				$version = NULL;
 			}
 			
+			$elements = apply_filters('site_plugin_admin', array());
+			
 			$values = array(
 				'created'=>$created, 
 				'version'=>$version,
-				'url'=>$_SERVER['REQUEST_URI']
+				'url'=>$_SERVER['REQUEST_URI'],
+				'elements'=>$elements
 			);
 			
-			$h2o = new h2o(WP_PLUGIN_DIR.'/site-plugin-core/views/add_version.html');
+			$h2o = new h2o(WP_PLUGIN_DIR.'/site-plugin-core/views/create_upgrade.html');
 			echo $h2o->render($values);
 		}
 		
@@ -351,96 +297,15 @@ if (!class_exists("SitePlugin")) {
 		
 		function main_page() {
 			$this->verify_permissions(); 
-			?>
-			<div class="wrap">
-				<h2><?php echo __($this->name), __(' Upgrade Log') ?></h2>
-				<p><?php echo __('Current Version: '), $this->get_current_version(); ?></p>
-				<h3><?php echo __('Changelog') ?></h3>
-				<ol>
-					<?php foreach ($versions = $this->get_versions(true) as $id=>$version ): ?>
-						<li>
-							<ul>
-								<?php foreach ( explode("\n", $version['changelog']) as $item ) : ?>
-									<li><?php echo $item; ?></li>
-								<?php endforeach; ?>
-							</ul>
-						</li>
-					<?php endforeach; ?>
-				</ol>
-			</div>
-		<?php } 
+			# TODO: load main page from template
+
+		} 
 		
 		function upgrade_page() { 
 			$this->verify_permissions();
-			?>
-			<div class="wrap">
+			# TODO: load upgrade page from template
 			
-				<?php if ( array_key_exists('execute', $_GET) ): 
-					$id = $_GET['execute'];
-				?>
-					<h2><?php echo __('Executing Upgrade: '), $id ?></h2>
-				<?php 
-					$versions = $this->available_upgrades();
-					$versions = array_keys($versions);
-					if ( !in_array($id, $versions) ) {
-      					wp_die( __("$id is not a valid version upgrade") );						
-					}
-					
-					$this->execute($id);
-				?>
-					<p><?php echo __('Execution complete!')?></p>
-				<?php endif; ?>
-				
-				<h2><?php echo __('Available Upgrades')?></h2>
-				<table class="widefat">
-					<thead>
-						<tr>
-							<th class="version"><?php echo __('Version') ?></th>
-							<th class="changelog"><?php echo __('Changelog') ?></th>
-							<th class="before-upgrade"><?php echo __('Verify before upgrade') ?></th>
-							<th class="upgrade"><?php echo __('Upgrade') ?></th>
-							<th class="after-upgrade"><?php echo __('Test after upgrade') ?></th>
-						</tr>
-					</thead>
-					<tbody>
-						<?php foreach ($this->available_upgrades() as $id => $info): 
-							$next = $id === $this->next_upgrade();
-						?>
-							<tr>
-								<td class="version"><?php echo $id ?></td>
-								<td class="changelog"><?php 
-									if ( $info['changelog'] ) : ?>
-										<ol>
-										<?php foreach ( explode("\n", $info['changelog']) as $item ) : ?>
-											<li><?php echo $item; ?></li>
-										<?php endforeach; ?>
-										</ol>
-									<?php else:
-										echo __('Not specified.');
-									endif; ?>
-								</td>
-								
-								<?php if ( $next ) : ?>
-								<td class="before-upgrade">
-									<a href="<?php echo esc_url($_SERVER['REQUEST_URI']."&amp;execute=$id&amp;action=before") ?>"><?php echo __('Execute') ?></a>
-								</td>
-								<td class="upgrade">
-									<a href="<?php echo esc_url($_SERVER['REQUEST_URI']."&amp;execute=$id&amp;action=upgrade") ?>"><?php echo __('Execute') ?></a>
-								</td>
-								<td class="after-upgrade">
-									<a href="<?php echo esc_url($_SERVER['REQUEST_URI']."&amp;execute=$id&amp;action=after") ?>"><?php echo __('Execute') ?></a>
-								</td>
-								<?php else: ?>
-									<td class="unavailable" colspan="3">
-									<?php echo __('Pending'); ?>
-									</td>
-								<?php endif; ?>
-							</tr>
-						<?php endforeach; ?>
-					</tbody>
-				</table>		
-			</div>
-	<?php }
+		}
 	}
 }
 
