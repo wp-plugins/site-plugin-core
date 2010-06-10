@@ -1,0 +1,3 @@
+$upgrade->execute('option_update', '{{ option }}', <<<EOT
+{{ value }}
+EOT);
